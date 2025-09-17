@@ -13,6 +13,7 @@ class Users(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     sha = Column(VARCHAR(100))
+
     name = Column(VARCHAR(100))
     surname = Column(VARCHAR(100))
     username = Column(VARCHAR(20), nullable=False, unique=True)
@@ -21,6 +22,24 @@ class Users(Base):
 
     date_created = Column(DateTime, default=datetime.now)
     archived = Column(DateTime)
+
+class Logs(Base):
+    __tablename__ = 'logs'
+    __table_args__ = {'schema': pstg_schema}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    username = Column(VARCHAR(20), nullable=False)
+    func_name = Column(VARCHAR(20), nullable=False)
+    params = Column(TEXT)
+
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
+    runtime = Column(Float, nullable=False)
+
+    error_msg = Column(TEXT)
+
+    created_at = Column(DateTime, default=datetime.now)
 
 def create_tables():
     Base.metadata.drop_all(database.engine)

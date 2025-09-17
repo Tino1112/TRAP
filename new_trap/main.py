@@ -1,5 +1,5 @@
 import logging
-
+from functions.log import Log
 from database.database import Database
 from functions.tcl import fix_tcL_error
 from gui import LoginWindow, MainWindow
@@ -23,4 +23,10 @@ class App:
         mw.mainloop()
 
 if __name__ == '__main__':
-    app = App()
+    # app = App()
+    log = Log('tinor')
+    @log
+    def add(x,y):
+        return x + y
+
+    add(3, 2)

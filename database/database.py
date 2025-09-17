@@ -19,18 +19,34 @@ class Database:
         self.con_string = con_string.format(**params)
         self.engine = create_engine(self.con_string)
 
-    def start_session(self):
-        return sessionmaker(self.engine)()
+        self.session = None
 
-    def bulk_insert(self, insert_data, db_table, session):
+    def start_session(self):
+        self.session = sessionmaker(self.engine)()
+        return self.session
+
+    def bulk_insert(self, insert_data, db_table, session=None):
+        if session is None:
+            session = self.session
         insert_data = self.insert_data_check(insert_data)
         for data in insert_data:
             new_record = db_table(**data)
             session.add(new_record)
         session.commit()
 
+    def insert_data(self, insert_data, db_table,session=None, commit=True):
+        if session is None:
+            session = self.session
+        insert_data = self.insert_data_check(insert_data)
+        for data in insert_data:
+            new_record = db_table(**data)
+            session.add(new_record)
+            if commit:
+                session.commit()
 
-    def merge(self, insert_data, db_table, filters, session, keys_order, unique_value, archive_col='archived', stats=False):
+    def merge(self, insert_data, db_table, filters, keys_order, unique_value, session=None, archive_col='archived', stats=False):
+        if session is None:
+            session = self.session
         # for stats
         inserted = 0
         updated = 0

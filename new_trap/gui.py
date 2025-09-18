@@ -1,7 +1,9 @@
 from PIL import Image
 from functions.tk_ctk import screen_dimensions
 from functions.tcl import fix_tcL_error
-from buttons_functions import login
+from buttons_functions import login, open_window
+from sqlalchemy.sql._elements_constructors import and_
+from new_trap.tables import Workers, WorkerDetails, WorkHistory, WorkersDocuments
 
 fix_tcL_error()
 
@@ -10,7 +12,8 @@ import customtkinter as ctk
 screen_width, screen_height = screen_dimensions()
 
 class BaseWindow:
-    def __init__(self, container, title: str, width: float, height: float, n_rows: int, n_cols: int, widgets_expandable: bool):
+    def __init__(self, container, title: str, width: float, height: float, n_rows: int, n_cols: int,
+                 widgets_expandable: bool, scrollable=False):
         """
         Base creator for CTk windows, super class to Window and TopLevelWindow classes
 
@@ -38,8 +41,10 @@ class BaseWindow:
         self.corner_radius = 40
         self.padx, self.pady = 10, 10
 
-        # create a frame and grid config it
-        self.frame = ctk.CTkFrame(self.container, corner_radius=self.corner_radius)
+        if scrollable:
+            self.frame = ctk.CTkScrollableFrame(self.container, corner_radius=self.corner_radius)
+        else:
+            self.frame = ctk.CTkFrame(self.container, corner_radius=self.corner_radius)
         self.frame.pack(fill="both", expand=True)
 
         weight = 1 if widgets_expandable else 0
@@ -74,14 +79,16 @@ class BaseWindow:
 
 
 class Window(ctk.CTk, BaseWindow):
-    def __init__(self, title, width, height, n_rows, n_cols, widgets_expandable):
+    def __init__(self, title, width, height, n_rows, n_cols, widgets_expandable, scrollable=False):
         ctk.CTk.__init__(self)
-        BaseWindow.__init__(self, self, title, width, height, n_rows, n_cols, widgets_expandable)
+        BaseWindow.__init__(self, self, title, width, height, n_rows, n_cols, widgets_expandable, scrollable=False)
 
 class TopLevelWindow(ctk.CTkToplevel, BaseWindow):
-    def __init__(self, title, width, height, n_rows, n_cols, widgets_expandable):
+    def __init__(self, title, width, height, n_rows, n_cols, widgets_expandable, scrollable=False):
         ctk.CTkToplevel.__init__(self)
-        BaseWindow.__init__(self, self, title, width, height, n_rows, n_cols, widgets_expandable)
+        BaseWindow.__init__(self, self, title, width, height, n_rows, n_cols, widgets_expandable, scrollable=False)
+
+        self.attributes('-topmost', True)
 
 class LoginWindow(Window):
     def __init__(self, database):
@@ -93,7 +100,7 @@ class LoginWindow(Window):
     def add_widgets(self):
         width = self.width * 0.9
         height = self.height * 0.15
-        font = ("Times", 40)
+        font = ("Yu Gothic UI Semibold", 40)
         widgets = [{'class': ctk.CTkLabel, 'row': 0, 'col': 0, 'kwargs':{'width': width, 'height': height, 'text': 'Login to your account', 'font': font}},
                    {'class': ctk.CTkEntry, 'row': 1, 'col': 0, 'kwargs':{'width': width, 'height': height, 'placeholder_text': 'Username'}},
                    {'class': ctk.CTkEntry, 'row': 2, 'col': 0, 'kwargs':{'width': width, 'height': height, 'placeholder_text': 'Password'}},
@@ -115,14 +122,14 @@ class MainWindow(Window):
     def add_widgets(self):
         button_width = self.width // 3
         button_height = self.height // 5
-        font = ("Times", 40)
+        font = ("Yu Gothic UI Semibold", 40)
         bg_image = Image.open(r'C:\Users\User\Documents\GitHub\TRAP\photos\db_bg.jpg')
         bg_photo = ctk.CTkImage(dark_image=bg_image, size=(self.width, self.height))
         bg = ctk.CTkLabel(self.frame, image=bg_photo, text="")
         bg.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         widgets = [{'class': ctk.CTkButton, 'row': 0, 'col': 0, 'kwargs':
-            {'width': button_width, 'height': button_height, 'command': self.button_func, 'text': 'New User', 'font': font}},
+            {'width': button_width, 'height': button_height, 'command': lambda: open_window(NewUserWindow, database=self.database), 'text': 'New User', 'font': font}},
                    {'class': ctk.CTkButton, 'row': 0, 'col': 1, 'kwargs':
             {'width': button_width, 'height': button_height, 'command': self.button_func, 'text': 'Workers', 'font': font}},
                    {'class': ctk.CTkButton, 'row': 2, 'col': 0, 'kwargs':
@@ -147,7 +154,7 @@ class NewUserWindow(TopLevelWindow):
     def add_widgets(self):
         width = self.width * 0.8
         height = self.height * 0.13
-        font = ("Times", 40)
+        font = ("Yu Gothic UI Semibold", 40)
         widgets = [{'class': ctk.CTkEntry, 'row': 0, 'col': 0, 'kwargs':{'width': width, 'height': height, 'placeholder_text': 'Name'}},
                    {'class': ctk.CTkEntry, 'row': 1, 'col': 0, 'kwargs':{'width': width, 'height': height, 'placeholder_text': 'Surname'}},
                    {'class': ctk.CTkEntry, 'row': 2, 'col': 0, 'kwargs':{'width': width, 'height': height, 'placeholder_text': 'Username'}},
@@ -165,4 +172,30 @@ class NewUserWindow(TopLevelWindow):
 
 class WorkersWindow(TopLevelWindow):
     def __init__(self, database):
-        TopLevelWindow.__init__(self, 'Create New User', 0.8, 0.8, 6, 1, True)
+        TopLevelWindow.__init__(self, 'Workers', 0.8, 0.8, 1, 1, True, scrollable=True)
+
+        self.database = database
+        with self.database.start_session() as pstg_session:
+            db_records = pstg_session.query(Workers).filter(Workers.archived.is_(None)).all()
+
+        columns = [column.name for column in Workers.__table__.columns[2:]]
+        records_data = [{col: getattr(record, col) for col in columns} for record in db_records]
+
+        self.table_data = [columns] + [list(data.values() for data in records_data)]
+
+        self.n_rows = len(self.table_data)
+        self.n_cols = len(columns)
+        self.grid_config(self.n_rows, self.n_cols, True)
+
+    def add_widgets(self):
+        for row, data in enumerate(self.table_data):
+            for col, value in enumerate(data):
+                kwargs = {'text': value, 'text_color': 'black', 'fgcolor': 'white', 'border_width': 1, 'border_color': 'grey',
+                          'hover_color': 'light blue'}
+                widget = self.grid_widget(ctk.CTkButton, row, col, **kwargs)
+                widget.configure(command=lambda b=widget: self.btn_func(b))
+                if row == 0:
+                    widget.configure(state='disabled', fg_color='light grey', text_color_disabled='black')
+
+    def btn_func(self, row):
+        pass

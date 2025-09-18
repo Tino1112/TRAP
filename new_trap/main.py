@@ -23,10 +23,4 @@ class App:
         mw.mainloop()
 
 if __name__ == '__main__':
-    # app = App()
-    log = Log('tinor')
-    @log
-    def add(x,y):
-        return x + y
-
-    add(3, 2)
+    app = App()

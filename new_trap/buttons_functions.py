@@ -1,18 +1,16 @@
-from PIL.ImageChops import add_modulo
-
 from exceptions.exceptions import NewUserError, LoginError
 from new_trap.parser import new_user_parser
 from new_trap.tables import Users
 from sqlalchemy.sql._elements_constructors import and_
 import customtkinter as ctk
 
-def open_window(master, window_class, **kwargs):
+def open_window(window_class, **kwargs):
     """
     Opens a new window of the given class.
     :param master: The main/root window
     :param window_class: a class that inherits from ctk.CTkToplevel
     """
-    window_class(master, **kwargs)
+    window_class(**kwargs)
 
 def submit_new_user(master, database):
     with database.start_session() as pstg_session:

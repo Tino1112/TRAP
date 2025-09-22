@@ -1,9 +1,14 @@
+import tkinter
+
 from PIL import Image
+from tkinter.messagebox import showerror
+from exceptions.exceptions import LoginError
 from functions.tk_ctk import screen_dimensions
 from functions.tcl import fix_tcL_error
-from buttons_functions import login, open_window
+from buttons_functions import login, open_window, submit_new_user
 from sqlalchemy.sql._elements_constructors import and_
 from new_trap.tables import Workers, WorkerDetails, WorkHistory, WorkersDocuments
+from sqlalchemy import select
 
 fix_tcL_error()
 
@@ -77,7 +82,6 @@ class BaseWindow:
 
         return widget
 
-
 class Window(ctk.CTk, BaseWindow):
     def __init__(self, title, width, height, n_rows, n_cols, widgets_expandable, scrollable=False):
         ctk.CTk.__init__(self)
@@ -97,6 +101,9 @@ class LoginWindow(Window):
         self.database = database
         self.bind('<Return>', lambda event: login(self.frame, self.database))
 
+        self.success = False
+        self.username = None
+
     def add_widgets(self):
         width = self.width * 0.9
         height = self.height * 0.15
@@ -105,13 +112,18 @@ class LoginWindow(Window):
                    {'class': ctk.CTkEntry, 'row': 1, 'col': 0, 'kwargs':{'width': width, 'height': height, 'placeholder_text': 'Username'}},
                    {'class': ctk.CTkEntry, 'row': 2, 'col': 0, 'kwargs':{'width': width, 'height': height, 'placeholder_text': 'Password'}},
                    {'class': ctk.CTkButton, 'row': 3, 'col': 0, 'kwargs':{'width': width, 'height': height, 'text': 'Login',
-                                                                          'font': font, 'command': lambda : login(self.frame, self.database)}},]
+                                                                          'font': font, 'command': self.button_func}},]
 
         for widget in widgets:
             self.grid_widget(widget['class'], row=widget['row'], col=widget['col'], **widget['kwargs'])
 
     def button_func(self):
-        pass
+        try:
+            db_record = login(self.frame, self.database)
+            self.success = True
+            self.username = db_record.username
+        except LoginError as e:
+            tkinter.messagebox.showerror('Login Error', str(e))
 
 class MainWindow(Window):
     def __init__(self, database):
@@ -131,7 +143,7 @@ class MainWindow(Window):
         widgets = [{'class': ctk.CTkButton, 'row': 0, 'col': 0, 'kwargs':
             {'width': button_width, 'height': button_height, 'command': lambda: open_window(NewUserWindow, database=self.database), 'text': 'New User', 'font': font}},
                    {'class': ctk.CTkButton, 'row': 0, 'col': 1, 'kwargs':
-            {'width': button_width, 'height': button_height, 'command': self.button_func, 'text': 'Workers', 'font': font}},
+            {'width': button_width, 'height': button_height, 'command': lambda: open_window(WorkersWindow, database=self.database), 'text': 'Workers', 'font': font}},
                    {'class': ctk.CTkButton, 'row': 2, 'col': 0, 'kwargs':
             {'width': button_width, 'height': button_height, 'command': self.button_func, 'text': 'Partners', 'font': font}},
                    {'class': ctk.CTkButton, 'row': 2, 'col': 1, 'kwargs':
@@ -140,7 +152,7 @@ class MainWindow(Window):
             {'width': button_width, 'height': button_height, 'text': 'Database Management System', 'columnspan': 2, 'font': font}}]
 
         for widget in widgets:
-            self.grid_widget(widget['class'], row=widget['row'], col=widget['col'], **widget['kwargs'])
+            self.grid_widget(widget['class'], row=widget['row'], col=widget['col'], padx=0, **widget['kwargs'])
 
     def button_func(self):
         pass
@@ -168,30 +180,36 @@ class NewUserWindow(TopLevelWindow):
             self.grid_widget(widget['class'], row=widget['row'], col=widget['col'], **widget['kwargs'])
 
     def button_func(self):
-        pass
+        try:
+            submit_new_user(self.frame, self.database)
+            tkinter.messagebox.showinfo('success', 'New was successfully submited')
+        except Exception as e:
+            tkinter.messagebox.showerror('Error', str(e))
 
 class WorkersWindow(TopLevelWindow):
     def __init__(self, database):
-        TopLevelWindow.__init__(self, 'Workers', 0.8, 0.8, 1, 1, True, scrollable=True)
 
         self.database = database
         with self.database.start_session() as pstg_session:
-            db_records = pstg_session.query(Workers).filter(Workers.archived.is_(None)).all()
+            db_records = pstg_session.execute(select(Workers).filter(Workers.archived.is_(None))).all()
 
-        columns = [column.name for column in Workers.__table__.columns[2:]]
+        columns = [column.name for column in Workers.__table__.columns[2:][:-1]]
         records_data = [{col: getattr(record, col) for col in columns} for record in db_records]
 
         self.table_data = [columns] + [list(data.values() for data in records_data)]
 
         self.n_rows = len(self.table_data)
         self.n_cols = len(columns)
-        self.grid_config(self.n_rows, self.n_cols, True)
+
+        TopLevelWindow.__init__(self, 'Workers', 0.8, 0.8, self.n_rows, self.n_cols, True, scrollable=True)
 
     def add_widgets(self):
+        btn_width = int(screen_width / self.n_cols)
+        btn_height = 40
         for row, data in enumerate(self.table_data):
             for col, value in enumerate(data):
-                kwargs = {'text': value, 'text_color': 'black', 'fgcolor': 'white', 'border_width': 1, 'border_color': 'grey',
-                          'hover_color': 'light blue'}
+                kwargs = {'text': value, 'text_color': 'black', 'fg_color': 'white', 'border_width': 1, 'border_color': 'grey',
+                          'hover_color': 'light blue', 'width': btn_width, 'height': btn_height}
                 widget = self.grid_widget(ctk.CTkButton, row, col, **kwargs)
                 widget.configure(command=lambda b=widget: self.btn_func(b))
                 if row == 0:
@@ -199,3 +217,5 @@ class WorkersWindow(TopLevelWindow):
 
     def btn_func(self, row):
         pass
+
+

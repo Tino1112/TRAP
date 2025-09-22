@@ -14,11 +14,14 @@ logger.setLevel(logging.DEBUG)
 class App:
     def __init__(self):
         self.database = Database('pstg', logger)
+        self.username = None
         self.workflow()
 
     def workflow(self):
-        lw = LoginWindow(self.database)
-        lw.mainloop()
+        # lw = LoginWindow(self.database)
+        # lw.mainloop()
+        # self.username = lw.username
+        # print(self.username)
         mw = MainWindow(self.database)
         mw.mainloop()
 

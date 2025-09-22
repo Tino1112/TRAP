@@ -2,6 +2,7 @@ from exceptions.exceptions import NewUserError, LoginError
 from new_trap.parser import new_user_parser
 from new_trap.tables import Users
 from sqlalchemy.sql._elements_constructors import and_
+from sqlalchemy import select
 import customtkinter as ctk
 
 def open_window(window_class, **kwargs):
@@ -23,14 +24,13 @@ def submit_new_user(master, database):
 
         data_dict = new_user_parser(data_dict)
         username = data_dict.get('username')
-        db_records = pstg_session.query(Users).filter(Users.username == username).all()
+        db_records = pstg_session.execute(select(Users).filter(and_(Users.username == username))).all()
         if db_records:
             raise NewUserError(f"User {username} already exists.")
 
         keys_order = ['name', 'surname', 'username', 'password', 'admin']
-        stats = database.merge(data_dict, Users, Users.archived.is_(None), pstg_session, keys_order, 'username',stats=True)
-        print(stats.inserted)
-
+        stats = database.merge(data_dict, Users, Users.archived.is_(None), keys_order, 'username', session=pstg_session, stats=True)
+        master.master.destroy()
 def login(master, database):
     with database.start_session() as pstg_session:
         window = master.master
@@ -47,3 +47,4 @@ def login(master, database):
             return db_record
 
         raise LoginError
+

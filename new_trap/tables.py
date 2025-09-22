@@ -53,6 +53,16 @@ class Workers(Base):
     last_name = Column(String(100), nullable=False)
     vat_number = Column(String(11), unique=True, nullable=False)
 
+    date_created = Column(DateTime, default=datetime.now)
+    archived = Column(DateTime)
+
+class WorkersBasicInfo(Base):
+    __tablename__ = "workers_basic_info"
+    __table_args__ = {"schema": pstg_schema}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, unique=True, nullable=False)
+
     passport_number = Column(String(20))
     id_number = Column(String(20))
     date_of_birth = Column(Date)

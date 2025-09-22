@@ -2,7 +2,7 @@ import os
 import hashlib
 from datetime import datetime
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 class Database:
@@ -10,7 +10,7 @@ class Database:
         load_dotenv()
         if dbname is None:
             logger.error('Database name cannot be None')
-            return
+            raise ValueError('Database name cannot be None')
 
         con_string = 'postgresql+{driver}://{user}:{psw}@{host}:{port}/{db}'
         self.params = ['user', 'psw', 'host', 'port', 'db']
@@ -19,24 +19,17 @@ class Database:
         self.con_string = con_string.format(**params)
         self.engine = create_engine(self.con_string)
 
-        self.session = None
-
     def start_session(self):
-        self.session = sessionmaker(self.engine)()
-        return self.session
+        return sessionmaker(self.engine, expire_on_commit=False)()
 
-    def bulk_insert(self, insert_data, db_table, session=None):
-        if session is None:
-            session = self.session
+    def bulk_insert(self, insert_data, db_table, session):
         insert_data = self.insert_data_check(insert_data)
         for data in insert_data:
             new_record = db_table(**data)
             session.add(new_record)
         session.commit()
 
-    def insert_data(self, insert_data, db_table,session=None, commit=True):
-        if session is None:
-            session = self.session
+    def insert_data(self, insert_data, db_table, session, commit=True):
         insert_data = self.insert_data_check(insert_data)
         for data in insert_data:
             new_record = db_table(**data)
@@ -44,9 +37,7 @@ class Database:
             if commit:
                 session.commit()
 
-    def merge(self, insert_data, db_table, filters, keys_order, unique_value, session=None, archive_col='archived', stats=False):
-        if session is None:
-            session = self.session
+    def merge(self, insert_data, db_table, filters, keys_order, unique_value, session, archive_col='archived', stats=False):
         # for stats
         inserted = 0
         updated = 0
@@ -55,7 +46,7 @@ class Database:
 
         # hash insert data for comparing to db data
         insert_data = self.hash_insert_data(insert_data, keys_order)
-        db_objs = session.query(db_table).filter(filters).all()
+        db_objs = session.execute(select(db_table).filter(filters)).scalars().all()
         db_map = {getattr(obj, unique_value): obj for obj in db_objs}
 
         for data in insert_data:

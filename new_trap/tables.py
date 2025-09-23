@@ -105,7 +105,7 @@ class WorkHistory(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, unique=True, nullable=False)
 
-    companyzh = Column(VARCHAR(150))
+    company = Column(VARCHAR(150))
     start_date = Column(DateTime)
     end_date = Column(DateTime)
     work_hours = Column(Integer)
@@ -150,5 +150,5 @@ if __name__ == '__main__':
 
     database = Database('pstg', logger)
 
-    create_tables()
+    # create_tables()
 

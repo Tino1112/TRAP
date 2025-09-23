@@ -18,12 +18,12 @@ class App:
         self.workflow()
 
     def workflow(self):
-        # lw = LoginWindow(self.database)
-        # lw.mainloop()
-        # self.username = lw.username
-        # print(self.username)
-        mw = MainWindow(self.database)
-        mw.mainloop()
+        lw = LoginWindow(self.database)
+        lw.mainloop()
+        self.username = lw.username
+        if lw.success:
+            mw = MainWindow(self.database)
+            mw.mainloop()
 
 if __name__ == '__main__':
     app = App()

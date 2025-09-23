@@ -2,7 +2,8 @@ from exceptions.exceptions import NewUserError, LoginError
 from new_trap.parser import new_user_parser
 from new_trap.tables import Users
 from sqlalchemy.sql._elements_constructors import and_
-from sqlalchemy import select
+from sqlalchemy import select, exists
+import tkinter.messagebox as messagebox
 import customtkinter as ctk
 
 def open_window(window_class, **kwargs):
@@ -43,8 +44,11 @@ def login(master, database):
         db_record = pstg_session.query(Users).filter(filters).first()
 
         if db_record:
-            window.destroy()
             return db_record
+        else:
+            username_exists = pstg_session.query(exists().where(and_(Users.username == username))).scalar()
+            msg = f"User {username} does not exist." if not username_exists else 'Password is incorrect.'
+            messagebox.showerror(title='Error', message=msg)
+            raise LoginError
 
-        raise LoginError
 

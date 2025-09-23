@@ -18,3 +18,7 @@ def new_user_parser(data_dict):
     data_dict['admin'] = True if data_dict['admin'] == 1 else False
 
     return data_dict
+
+def workers_parser(data_dict):
+    data_dict['date_created'] = data_dict['date_created'].date()
+    return data_dict

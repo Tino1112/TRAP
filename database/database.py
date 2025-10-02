@@ -4,6 +4,8 @@ from datetime import datetime
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql.operators import and_
+
 
 class Database:
     def __init__(self, dbname, logger, driver='psycopg2'):
@@ -21,6 +23,20 @@ class Database:
 
     def start_session(self):
         return sessionmaker(self.engine, expire_on_commit=False)()
+
+    def select_first(self, db_table, session, filters=None):
+        stmt = select(db_table)
+        if filters is not None:
+            stmt = stmt.where(filters)
+        db_obj = session.execute(stmt).scalars().first()
+        return db_obj
+
+    def select_all(self, db_table, session, filters=None):
+        stmt = select(db_table)
+        if filters is not None:
+            stmt = stmt.where(filters)
+        db_objs = session.execute(stmt).scalars().all()
+        return db_objs
 
     def bulk_insert(self, insert_data, db_table, session):
         insert_data = self.insert_data_check(insert_data)
@@ -46,7 +62,7 @@ class Database:
 
         # hash insert data for comparing to db data
         insert_data = self.hash_insert_data(insert_data, keys_order)
-        db_objs = session.execute(select(db_table).filter(filters)).scalars().all()
+        db_objs = self.select_all(db_table, session, filters)
         db_map = {getattr(obj, unique_value): obj for obj in db_objs}
 
         for data in insert_data:
